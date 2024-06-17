@@ -3,17 +3,21 @@ package com.companity.authorization_server.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.annotation.SecurityBuilder;
 import org.springframework.security.config.annotation.SecurityConfigurer;
 import org.springframework.security.config.annotation.SecurityConfigurerAdapter;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
+import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
 import org.springframework.security.web.SecurityFilterChain;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
 import java.security.interfaces.RSAPublicKey;
+import java.time.Duration;
 import java.util.UUID;
 
 import com.nimbusds.jose.jwk.JWKSet;
@@ -47,6 +51,9 @@ import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.util.matcher.MediaTypeRequestMatcher;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
 @EnableWebSecurity
@@ -71,8 +78,21 @@ public class SecurityConfig {
                 // Accept access tokens for User Info and/or Client Registration
                 .oauth2ResourceServer((resourceServer) -> resourceServer
                         .jwt(Customizer.withDefaults()));
+//                .cors(Customizer.withDefaults());
 
-        return http.build();
+        return http.cors(Customizer.withDefaults()).build();
+    }
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        CorsConfiguration config = new CorsConfiguration();
+        config.addAllowedHeader("*");
+        config.addAllowedMethod("*");
+        config.addAllowedOrigin("http://127.0.0.1:4200");
+        config.setAllowCredentials(true);
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 
     @Bean
@@ -93,8 +113,8 @@ public class SecurityConfig {
     @Bean
     public UserDetailsService userDetailsService() {
         UserDetails userDetails = User.withDefaultPasswordEncoder()
-                .username("user")
-                .password("1111")
+                .username("user1")
+                .password("password")
                 .roles("USER")
                 .build();
 
@@ -102,21 +122,45 @@ public class SecurityConfig {
     }
 
     @Bean
-    public RegisteredClientRepository registeredClientRepository() {
-        RegisteredClient oidcClient = RegisteredClient.withId(UUID.randomUUID().toString())
-                .clientId("oidc-client")
+    public RegisteredClientRepository registeredClientRepository(JdbcTemplate jdbcTemplate) {
+
+        JdbcRegisteredClientRepository registeredClientRepository = new JdbcRegisteredClientRepository(jdbcTemplate);
+
+        RegisteredClient companityClient = RegisteredClient.withId("2a80b5a7-e31e-4434-9e11-8c25f21f2528")//(UUID.randomUUID().toString())
+                .clientId("companity-client")
                 .clientSecret("{noop}secret")
                 .clientAuthenticationMethod(ClientAuthenticationMethod.CLIENT_SECRET_BASIC)
                 .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
-                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
-                .redirectUri("http://127.0.0.1:8081/login/oauth2/code/oidc-client")
-                .postLogoutRedirectUri("http://127.0.0.1:8081/")
+                .redirectUri("http://127.0.0.1:8080/login/oauth2/code/companity-client")
+                .postLogoutRedirectUri("http://127.0.0.1:8080/")
                 .scope(OidcScopes.OPENID)
                 .scope(OidcScopes.PROFILE)
                 .clientSettings(ClientSettings.builder().requireAuthorizationConsent(true).build())
+                // 이건 추가 설정값 (토큰 만료기간)
+                .tokenSettings(TokenSettings.builder().accessTokenTimeToLive(Duration.ofHours(1))
+                        .refreshTokenTimeToLive(Duration.ofDays(30)).build())
                 .build();
 
-        return new InMemoryRegisteredClientRepository(oidcClient);
+        RegisteredClient publicClient = RegisteredClient.withId("b26101f9-0408-43ff-b168-d90e9fb115f4")
+                .clientId("public-client")
+                .clientAuthenticationMethod(ClientAuthenticationMethod.NONE)
+                .authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+                .authorizationGrantType(AuthorizationGrantType.REFRESH_TOKEN)
+                .redirectUri("http://127.0.0.1:8080/login/oauth2/code/public-client")
+                .redirectUri("https://oauth.pstmn.io/v1/callback")
+                .scope(OidcScopes.OPENID)
+                .scope(OidcScopes.PROFILE)
+                .clientSettings(ClientSettings.builder()
+                        .requireAuthorizationConsent(true)
+                        .requireProofKey(true)
+                        .build()
+                )
+                .build();
+
+        registeredClientRepository.save(companityClient);
+        registeredClientRepository.save(publicClient);
+
+        return registeredClientRepository;
     }
 
     @Bean
