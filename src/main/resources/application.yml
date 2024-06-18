@@ -45,3 +45,7 @@ spring:
 #                - "openid"
 #                - "profile"
 #            require-authorization-consent: true
+
+keystore:
+  path: ./conf/auth-server.pfx
+  pass: password
