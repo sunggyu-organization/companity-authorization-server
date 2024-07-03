@@ -1,9 +1,9 @@
-package com.companity.authorization_server.adapter.jpa;
+package com.companity.authorization_server.adapter;
 
-import java.sql.Time;
 import java.time.Duration;
 import java.util.*;
 
+import com.companity.authorization_server.adapter.jpa.ClientRepository;
 import com.companity.authorization_server.adapter.jpa.entity.Client;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.Module;
@@ -14,7 +14,6 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.ClientAuthenticationMethod;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
 import org.springframework.security.oauth2.server.authorization.client.RegisteredClient;
-import org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.jackson2.OAuth2AuthorizationServerJackson2Module;
 import org.springframework.security.oauth2.server.authorization.settings.ClientSettings;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
@@ -23,15 +22,15 @@ import org.springframework.util.Assert;
 import org.springframework.util.StringUtils;
 
 @Component
-public class JpaRegisteredClientRepository implements RegisteredClientRepository {
+public class RegisteredClientRepository implements org.springframework.security.oauth2.server.authorization.client.RegisteredClientRepository {
     private final ClientRepository clientRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public JpaRegisteredClientRepository(ClientRepository clientRepository) {
+    public RegisteredClientRepository(ClientRepository clientRepository) {
         Assert.notNull(clientRepository, "clientRepository cannot be null");
         this.clientRepository = clientRepository;
 
-        ClassLoader classLoader = JpaRegisteredClientRepository.class.getClassLoader();
+        ClassLoader classLoader = RegisteredClientRepository.class.getClassLoader();
         List<Module> securityModules = SecurityJackson2Modules.getModules(classLoader);
         this.objectMapper.registerModules(securityModules);
         this.objectMapper.registerModule(new OAuth2AuthorizationServerJackson2Module());

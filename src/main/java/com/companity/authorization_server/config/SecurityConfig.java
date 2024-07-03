@@ -1,14 +1,15 @@
 package com.companity.authorization_server.config;
 
-import com.companity.authorization_server.auth.CustomAuthenticationProvider;
+import com.companity.authorization_server.application.service.CompanityUserDetailService;
 import com.nimbusds.jose.jwk.PasswordLookup;
-import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.server.authorization.client.JdbcRegisteredClientRepository;
 import org.springframework.security.oauth2.server.authorization.config.annotation.web.configurers.OAuth2AuthorizationServerConfigurer;
 import org.springframework.security.oauth2.server.authorization.settings.TokenSettings;
@@ -111,13 +112,8 @@ public class SecurityConfig {
 
     @Bean
     public UserDetailsService userDetailsService() {
-        UserDetails userDetails = User.withDefaultPasswordEncoder()
-                .username("user1")
-                .password("password")
-                .roles("USER")
-                .build();
 
-        return new InMemoryUserDetailsManager(userDetails);
+        return new CompanityUserDetailService();
     }
 
 //    @Bean
@@ -160,6 +156,11 @@ public class SecurityConfig {
         registeredClientRepository.save(publicClient);
 
         return registeredClientRepository;
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder(){
+        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
 
     @Bean
